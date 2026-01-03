@@ -1,10 +1,20 @@
 import pandas as pd
 import numpy as np
-from utils.functions import get_quarter_year, get_start_of_week
+from utils.functions import get_quarter_year, get_start_of_week, get_fx_type_and_unique_pairs
 
 
 def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, sell_amount, sell_currency, exchange_rate):
     model_ouput = pd.DataFrame({})
+
+    trade_df = get_fx_type_and_unique_pairs(
+        df = trade_df,
+        exchangerte = exchange_rate,
+        currencypair = ccy_pair,
+        rate_inversion = False
+    )
+
+
+
     for unique_pair in trade_df["unique_pairs"].unique(): #  Loop through all currency pairs in the table
         # Pick a currency Pair
         df_ = trade_df[trade_df["unique_pairs"] == unique_pair]
@@ -347,10 +357,12 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
             shorts_detail = '-'
             for sell_trades in inventory_of_shorts__fx_sales:
                 # print(f"row {row_index}; sell inv : {inventory_of_shorts__fx_sales}")
-                shorts_detail = f"{sell_trades["base_amount"]:,.4f} to be sold @ {sell_trades["rates"]:,.8f} \n" 
+                shorts_detail = f"... to be sold @ ..."
+                # shorts_detail = f"{sell_trades["base_amount"]:,.4f} to be sold @ {sell_trades["rates"]:,.8f}" 
             for buy_trades in inventory_of_longs____fx_buys:
                 # print(f"row {row_index}; buy inv : {inventory_of_longs____fx_buys}")
-                longs_detail = f"{buy_trades["base_amount"]:,.4f} bought @ {buy_trades["rates"]:,.8f} \n"
+                longs_detail = f"... bought @ ..."
+                # longs_detail = f"{buy_trades["base_amount"]:,.4f} bought @ {buy_trades["rates"]:,.8f}"
 
             current_inventory_state_details[row_index] = f"Sell Position: \n{shorts_detail} \n Buy Position: \n{longs_detail}"
             # print(f"Checks: {current_inventory_state_details[row_index]}")

@@ -96,19 +96,12 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
 
 
         computed_revenue_lc = np.empty(number_of_records, dtype= np.result_type(float)) # Initialize an dict to hold the records of the Computed Revenue in Local Currency
-        fx_revenue_currency = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an dict to hold the records of the FX Currency
-        realized_markup = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an dict to hold the records of the markup
         revenue_calc_formula = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an str to hold the implemented revenue formula
         current_inventory_state = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an str to hold the final state positions of shorts and longs
         current_inventory_state_details = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an str to hold the details of all the rates of shorts and longs
         last_state_identifier = np.empty(number_of_records, dtype=bool)
-        unrealized_revenue_calc_formula = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy))
-        computed_unrealized_revenue_lc = np.empty(number_of_records, dtype= np.result_type(float))
 
         WAR = np.empty(number_of_records, dtype= np.result_type(float))
-        ops_closing_buy_rate_ = np.empty(number_of_records, dtype= np.result_type(float))
-        ops_closing_sell_rate_ = np.empty(number_of_records, dtype= np.result_type(float))
-        
         unrealized_revenue_with_WAR_formula = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy))
 
 
@@ -118,7 +111,6 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
             revenue_calc_formula[row_index] = ''
             computed_revenue_lc[row_index] = 0.0
             current_inventory_state[row_index] = ''
-            unrealized_revenue_calc_formula[row_index] = ''
 
             # if exchange_rate_numpy[row_index] == 0:
             #     rate_inverse_for_comparism = 0
@@ -375,11 +367,6 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
 
             if row_index == number_of_records - 1:
                 last_state_identifier[row_index] = True # to identify last trade for the day on each currency pair
-
-                computed_unrealized_revenue_lc[row_index] = 0.0
-                unrealized_revenue_calc_formula[row_index] = ''
-
-
                 unrealized_revenue_with_WAR_formula[row_index] = ''
 
                 # WAR Calculations
@@ -416,8 +403,6 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
 
             else:
                 last_state_identifier[row_index] = False # to identify last trade for the day on each currency pair
-                unrealized_revenue_calc_formula[row_index] = None
-
                 WAR[row_index] = None
                 unrealized_revenue_with_WAR_formula[row_index] = None
 
@@ -425,25 +410,21 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
 
 # ******************** # ******************** # ******************** # ******************** # *** ******************** # ***************** # ******************** #
 # ROLL UP 
-        df_["base_currency"] = base_currency
+        df_["traded_currency"] = base_currency
         df_["traded_amount"] = traded_amount
         df_["revenue_currency"] = revenue_currency
         df_["inventory_balance"] = inventory_amount
-        df_["revenue_calc_formula"] = revenue_calc_formula
-        df_["FIFO_Revenue_LC"] = np.round(computed_revenue_lc, 8)
+        df_["revenue_calculation_formula"] = revenue_calc_formula
+        df_["estimated_revenue"] = np.round(computed_revenue_lc, 8)
 
         df_["current_inventory_state"] = current_inventory_state
         df_["last_trade_check"] = last_state_identifier
         df_["current_inventory_state_details"] = current_inventory_state_details
         
-        df_["unrealized_revenue_calc_formula"] = unrealized_revenue_calc_formula 
-        df_["computed_unrealized_revenue_lc"] = computed_unrealized_revenue_lc 
-
 
         df_["WAR of Open Position"] = WAR
         df_["unrealized_revenue_with_WAR_formula"] = unrealized_revenue_with_WAR_formula 
     
         model_ouput = pd.concat([model_ouput, df_], ignore_index= True)
 
-    # model_ouput = model_ouput.drop(columns = ["date_col_as_date"])
     return model_ouput

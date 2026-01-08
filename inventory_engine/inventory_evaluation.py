@@ -24,9 +24,12 @@ def evaluate_fx_recognition_logic(trade_df_raw, date_column, ccy_pair_column:str
     trade_df = trade_df_raw.copy()
     model_output = pd.DataFrame({})
 
+    temp_date_column = "temp_date"
+    st.session_state['temp_date_column'] = temp_date_column
+
     # Sort in ascending order
     trade_df = trade_df.sort_values(by=date_column, ascending=True)
-    trade_df.loc[:, "date_col_as_date"] = pd.to_datetime(trade_df[date_column]).dt.date
+    trade_df.loc[:, temp_date_column] = pd.to_datetime(trade_df[date_column]).dt.date
 
 
     for period in trade_df["period"].unique():
@@ -34,7 +37,7 @@ def evaluate_fx_recognition_logic(trade_df_raw, date_column, ccy_pair_column:str
 
         if logic_type == "FIFO":
             output_i = run_fifo_engine(
-                trade_df = trade_df[trade_df["period"]==period].drop(columns=["period"]),
+                trade_df = trade_df[trade_df["period"]==period],
                 date_column= date_column,
                 ccy_pair= ccy_pair_column,
                 buy_amount= buy_amount_column,

@@ -1,25 +1,8 @@
 import streamlit as st
-from utils.functions import load_file
+import pandas as pd
+from utils.functions import load_file, init_upload_state
 from utils.progress import step_indicator
 from inventory_engine.inventory_evaluation import evaluate_fx_recognition_logic 
-
-def init_upload_state(df):
-    defaults = {
-        "selected_trade_date": df.columns[0],
-        "selected_exchange_rate": df.columns[0],
-        "selected_ccy_pair": df.columns[0],
-        "selected_amount_debited": df.columns[0],
-        "selected_amount_credited": df.columns[0],
-        "selected_currency_debited": df.columns[0],
-        "selected_currency_credited": df.columns[0],
-        "recognition_method": df.columns[0],
-        "selected_time_period": df.columns[0],
-    }
-
-    for k, v in defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-
 
 def upload_page(go_to):
 
@@ -31,49 +14,98 @@ def upload_page(go_to):
         return
         
 
-    if "df_input" not in st.session_state:
-        st.session_state.df_input = load_file(st.session_state.uploaded_file)
+    if "input_df" not in st.session_state:
+        st.session_state.original_input_df = load_file(st.session_state.uploaded_file)
 
-    df = st.session_state.df_input
+    original_input_df = st.session_state.original_input_df
+    input_df = st.session_state.original_input_df.copy()
+    st.session_state.input_df = input_df
 
-    st.dataframe(df.head(), use_container_width=True)
+    st.dataframe(input_df.head(), width='stretch')
     # st.write(["Select a Column ..."] + df.columns.tolist())
 
-    # Pick the needed columns that should do what from the shared input file
-    init_upload_state(df)
-    with st.expander("🧩 Column Mapping", expanded=False):
-        c1, c2 = st.columns(2)
+    # Initialize states across all columns that will play a part
+    init_upload_state(input_df)
 
+    # Pick the needed columns that should do what from the shared input file
+    with st.expander("🧩 Column Mapping", expanded=False):
+        # c1, c2 = st.columns(2)
+
+        # with c1:
+        #     selected_trade_date = st.selectbox(
+        #         "Identify the Date Column", ["Select a Column ..."] + input_df.columns.tolist(), key="trade_date_selectbox"
+        #     )
+
+        #     selected_currency_debited = st.selectbox(
+        #         "Identify Currency To Convert From", ["Select a Column ..."] + input_df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair, selected_amount_debited, selected_amount_credited], sort=False).tolist(), key="currency_debited_selectbox"
+        #     )
+        #     selected_currency_credited = st.selectbox(
+        #         "Identify Currency To Convert To", ["Select a Column ..."] + input_df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair, selected_amount_debited, selected_amount_credited, selected_currency_debited], sort=False).tolist(), key="currency_credited_selectbox"
+        #     )
+        #     # selected_ccy_pair = st.selectbox(
+        #     #     "Identify Currency Pair Column", ["Select a Column ..."] + input_df.columns.difference([selected_trade_date, selected_exchange_rate], sort=False).tolist(), key="ccy_pair_selectbox"
+        #     # )
+
+
+        # with c2:
+        #     selected_exchange_rate = st.selectbox(
+        #         "Identify Exchange Rate Column", ["Select a Column ..."] + input_df.columns.difference([selected_trade_date], sort=False).tolist(), key="exchange_rate_selectbox"
+        #     )
+        #     selected_amount_debited = st.selectbox(
+        #         "Identify Amount Before FX Conversion", ["Select a Column ..."] + input_df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair], sort=False).tolist(), key="amount_debited_selectbox"
+        #     )
+        #     selected_amount_credited = st.selectbox(
+        #         "Identify Amount After FX Conversion", ["Select a Column ..."] + input_df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair, selected_amount_debited], sort=False).tolist(),key="amount_credited_selectbox"
+        #     )
+
+        # r1, r2, r3 = st.rows(3)
+        # with r1:
+        c1, c2 = st.columns(2)
+        selected_columns = []
         with c1:
             selected_trade_date = st.selectbox(
-                "Identify the Date Column", ["Select a Column ..."] + df.columns.tolist(), key="trade_date_selectbox"
+                "Identify the Date Column", ["Select a Column ..."] + input_df.columns.tolist(), key="trade_date_selectbox"
             )
+            selected_columns.append(selected_trade_date)
+        with c2:
             selected_exchange_rate = st.selectbox(
-                "What Column tells us the rate of conversion used for this conversion", ["Select a Column ..."] + df.columns.difference([selected_trade_date], sort=False).tolist(), key="exchange_rate_selectbox"
+                "Identify Exchange Rate Column", ["Select a Column ..."] + input_df.columns.difference(selected_columns, sort=False).tolist(), key="exchange_rate_selectbox"
             )
-            selected_ccy_pair = st.selectbox(
-                "What Column tells us the Currency Pair invovled in this conversion", ["Select a Column ..."] + df.columns.difference([selected_trade_date, selected_exchange_rate], sort=False).tolist(), key="ccy_pair_selectbox"
+            selected_columns.append(selected_exchange_rate)
+        
+        # with r2:
+        c1, c2 = st.columns(2)
+        with c1:
+            selected_currency_debited = st.selectbox(
+                "Identify Currency To Convert From", ["Select a Column ..."] + input_df.columns.difference(selected_columns, sort=False).tolist(), key="currency_debited_selectbox"
             )
+            selected_columns.append(selected_currency_debited)
+        with c2:
             selected_amount_debited = st.selectbox(
-                "What Column tells us the amount to be converted", ["Select a Column ..."] + df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair], sort=False).tolist(), key="amount_debited_selectbox"
+                "Identify Amount Before FX Conversion", ["Select a Column ..."] + input_df.columns.difference(selected_columns, sort=False).tolist(), key="amount_debited_selectbox"
             )
+            selected_columns.append(selected_amount_debited)
 
+        # with r3:
+        c1, c2 = st.columns(2)
+        with c1:
+            selected_currency_credited = st.selectbox(
+                "Identify Currency To Convert To", ["Select a Column ..."] + input_df.columns.difference(selected_columns, sort=False).tolist(), key="currency_credited_selectbox"
+            )
+            selected_columns.append(selected_currency_credited)
         with c2:
             selected_amount_credited = st.selectbox(
-                "What Column tells us the amount to be credited to the customer", ["Select a Column ..."] + df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair, selected_amount_debited], sort=False).tolist(),key="amount_credited_selectbox"
+                "Identify Amount After FX Conversion", ["Select a Column ..."] + input_df.columns.difference(selected_columns, sort=False).tolist(),key="amount_credited_selectbox"
             )
-            selected_currency_debited = st.selectbox(
-                "What Column tells us the currency to be converted", ["Select a Column ..."] + df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair, selected_amount_debited, selected_amount_credited], sort=False).tolist(), key="currency_debited_selectbox"
-            )
-            selected_currency_credited = st.selectbox(
-                "What Column tells us the currency to be credited to the customer", ["Select a Column ..."] + df.columns.difference([selected_trade_date, selected_exchange_rate, selected_ccy_pair, selected_amount_debited, selected_amount_credited, selected_currency_debited], sort=False).tolist(), key="currency_credited_selectbox"
-            )
+            selected_columns.append(selected_amount_credited)
+
+
 
 
     expected_column_mapping = [
         selected_trade_date,
         selected_exchange_rate,
-        selected_ccy_pair,
+        # selected_ccy_pair,
         selected_amount_debited,
         selected_amount_credited,
         selected_currency_debited,
@@ -83,35 +115,50 @@ def upload_page(go_to):
         st.warning("Please complete the column mapping to proceed.")
         st.stop()
 
+    # Convert required columns to appropriate data types
+    input_df[selected_trade_date] = pd.to_datetime(input_df[selected_trade_date], errors='coerce')
+    input_df[selected_amount_debited] = pd.to_numeric(input_df[selected_amount_debited], errors='coerce')
+    input_df[selected_amount_credited] = pd.to_numeric(input_df[selected_amount_credited], errors='coerce')
+    input_df[selected_exchange_rate] = pd.to_numeric(input_df[selected_exchange_rate], errors='coerce')
 
     with st.expander("⚙ Recognition Method & Time Period", expanded=True):
         c3, c4 = st.columns(2)
         with c3:
             recognition_method = st.selectbox(
                 "Revenue Recognition Method",
-                ["FIFO", "LIFO", "Weighted Average"]
+                ["Select Revenue Recognition Method...", "FIFO", "LIFO", "Weighted Average"]
             )
+
+            if recognition_method not in ['FIFO', 'Select Revenue Recognition Method...']:
+                st.warning(f"The logic type {recognition_method} is not yet implemented. Please select FIFO Logic.")
+                st.stop()
+
         with c4:
             selected_time_period = st.selectbox(
                 "Select Time Period for Recognition",
-                ["Select Frequency of Revenue Recognition...", "Yearly", "Quarterly", "Monthly", "Weekly", "Daily"]
+                ["Select Cycle of Revenue Recognition...", "Yearly", "Quarterly", "Monthly", "Weekly", "Daily"]
             )
 
 
-    if selected_time_period.startswith("Select Frequency"):
+    if recognition_method.startswith("Select Revenue"):
+        st.warning("Please select the desired methodology to use for this revenue recognition process.")
+        st.stop()
+    elif selected_time_period.startswith("Select Cycle"):
         st.warning("Please select the time period for revenue recognition to proceed.")
         st.stop()
 
-
     if st.button("▶ Run Evaluation"):
+
+        ccy_pair_temp_column = "ccy_pair_temp_column"
+        input_df[ccy_pair_temp_column] = input_df[selected_currency_debited].str.strip() + "-" +  input_df[selected_currency_credited].str.strip()
 
         # -----------------------
         # Evaluation
         # -----------------------
-        df_output = evaluate_fx_recognition_logic(
-            trade_df_raw = df,
+        output_df = evaluate_fx_recognition_logic(
+            trade_df_raw = input_df,
             date_column = selected_trade_date,
-            ccy_pair_column = selected_ccy_pair,
+            ccy_pair_column = ccy_pair_temp_column,
             buy_amount_column = selected_amount_debited,
             buy_currency_column = selected_currency_debited,
             sell_amount_column = selected_amount_credited,
@@ -120,17 +167,17 @@ def upload_page(go_to):
             period = selected_time_period,
             logic_type = recognition_method
         )
-        st.session_state.df_output = df_output
+        st.session_state.output_df = output_df
 
-        st.session_state.selected_trade_date = selected_trade_date
-        st.session_state.selected_exchange_rate = selected_exchange_rate
-        st.session_state.selected_ccy_pair = selected_ccy_pair
-        st.session_state.selected_amount_debited = selected_amount_debited
-        st.session_state.selected_amount_credited = selected_amount_credited
-        st.session_state.selected_currency_debited = selected_currency_debited
-        st.session_state.selected_currency_credited = selected_currency_credited
+        st.session_state.date_column = selected_trade_date
+        st.session_state.rate_column = selected_exchange_rate
+        st.session_state.ccy_pair_column = ccy_pair_temp_column
+        st.session_state.from_amount = selected_amount_debited
+        st.session_state.to_amount = selected_amount_credited
+        st.session_state.from_currency = selected_currency_debited
+        st.session_state.to_currency = selected_currency_credited
         st.session_state.recognition_method = recognition_method
-        st.session_state.selected_time_period = selected_time_period
+        st.session_state.recognition_cycle = selected_time_period
 
         st.session_state.column_map = {
 
@@ -144,21 +191,10 @@ def upload_page(go_to):
             "recognition_method": st.session_state.recognition_method,
             "selected_time_period": st.session_state.selected_time_period,
 
-            "df_input": st.session_state.df_input,
-            "df_output": st.session_state.df_output,
-
+            "input_df": st.session_state.input_df,
+            "output_df": st.session_state.output_df,
+            "original_input_df": st.session_state.original_input_df
 
         }
         go_to("summary")
-
-        # st.session_state.column_map = expected_column_mapping
-        # st.session_state.method = recognition_method
-        # st.session_state.df_output = df_output
-        # st.session_state.df_input = df
-        # st.session_state.period = selected_time_period
-
-        # st.session_state.selected_amount_credited = selected_amount_credited
-        # st.session_state.selected_exchange_rate = selected_exchange_rate
-
-        # go_to("summary")
 

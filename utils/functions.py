@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import streamlit as st
 import ast
 from collections import Counter
 
@@ -152,3 +153,20 @@ def load_file(uploaded_file):
         return pd.read_csv(uploaded_file)
     else:
         return pd.read_excel(uploaded_file)
+    
+def init_upload_state(df):
+    defaults = {
+        "selected_trade_date": df.columns[0],
+        "selected_exchange_rate": df.columns[0],
+        "selected_ccy_pair": df.columns[0],
+        "selected_amount_debited": df.columns[0],
+        "selected_amount_credited": df.columns[0],
+        "selected_currency_debited": df.columns[0],
+        "selected_currency_credited": df.columns[0],
+        "recognition_method": df.columns[0],
+        "selected_time_period": df.columns[0],
+    }
+
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v

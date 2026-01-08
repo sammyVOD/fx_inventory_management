@@ -1,25 +1,10 @@
 import streamlit as st
 import pandas as pd
-from utils.functions import load_file
-from inventory_engine.inventory_evaluation import evaluate_fx_recognition_logic 
+# from utils.functions import load_file
+# from inventory_engine.inventory_evaluation import evaluate_fx_recognition_logic 
 from pages.upload import upload_page
 from pages.summary import summary_page
-from pages.details import details_page
-
-# st.set_page_config(
-#     page_title="FX Revenue Recognition",
-#     layout="wide"
-# )
-
-
-# def summary_metrics(df):
-#     return {
-#         "Total Trades": len(df),
-#         "Total Volume (Foreign)": df[selected_amount_credited].sum(),
-#         "Total Revenue": df["FIFO_Revenue_LC"].sum(),
-#         "Average FX Rate": df[selected_exchange_rate].mean(),
-#     }
-
+from pages.output_download_page import details_page
 
 # ---------------------------------------
 # Page config
@@ -73,7 +58,7 @@ if uploaded_file and "uploaded_file" in st.session_state:
             st.session_state.page = "upload"
             st.rerun()
 
-# Manual reset (optional but recommended)
+# Manual reset
 st.sidebar.divider()
 if st.sidebar.button("Reset App"):
     for k in list(st.session_state.keys()):
@@ -87,12 +72,12 @@ if st.session_state.page == "upload":
     upload_page(go_to)
 
 elif st.session_state.page == "summary":
-    if "df_input" not in st.session_state:
+    if "input_df" not in st.session_state:
         go_to("upload")
     summary_page(go_to)
 
-elif st.session_state.page == "details":
-    if "df_output" not in st.session_state:
+elif st.session_state.page == "output_download_page":
+    if "output_df" not in st.session_state:
         go_to("summary")
     details_page(go_to)
 
@@ -104,32 +89,6 @@ elif st.session_state.page == "details":
 # # Sidebar controls
 # # -----------------------
 
-# st.sidebar.title("Configuration")
-
-# recognition_method = st.sidebar.selectbox(
-#     "Revenue Recognition Method",
-#     ["FIFO", "LIFO", "Weighted Average"]
-# )
-
-# uploaded_file = st.sidebar.file_uploader(
-#     "Upload FX Input File",
-#     type=["csv", "xlsx"]
-# )
-
-# st.title("💱 FX Revenue Recognition Engine")
-
-# if uploaded_file is None:
-#     st.info("Upload an FX trades file to begin.")
-#     st.stop()
-
-# # -----------------------
-# # Load Data
-# # -----------------------
-
-# df_input = load_file(uploaded_file)
-
-# st.subheader("📄 Input Data Preview")
-# st.dataframe(df_input.head(), use_container_width=True)
 
 
 
@@ -138,10 +97,7 @@ elif st.session_state.page == "details":
 
 
 
-# df_input[selected_trade_date] = pd.to_datetime(df_input[selected_trade_date], errors='coerce')
-# df_input[selected_amount_debited] = pd.to_numeric(df_input[selected_amount_debited], errors='coerce')
-# df_input[selected_amount_credited] = pd.to_numeric(df_input[selected_amount_credited], errors='coerce')
-# df_input[selected_exchange_rate] = pd.to_numeric(df_input[selected_exchange_rate], errors='coerce')
+
 
 
 

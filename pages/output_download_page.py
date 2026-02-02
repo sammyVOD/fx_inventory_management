@@ -19,7 +19,7 @@ def details_page(go_to):
 
 
     if st.button("⬅ Back to Summary"):
-        go_to("summary")
+        go_to("output_summary")
 
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:

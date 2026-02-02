@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 # from utils.functions import load_file
 # from inventory_engine.inventory_evaluation import evaluate_fx_recognition_logic 
+from pages.readme import render
 from pages.upload import upload_page
-from pages.summary import summary_page
+from pages.output_summary import summary_page
 from pages.output_download_page import details_page
 
 # ---------------------------------------
@@ -18,14 +19,14 @@ st.set_page_config(
 # Navigation state
 # ---------------------------------------
 if "page" not in st.session_state:
-    st.session_state.page = "upload"
-
-
+    st.session_state.page = "readme"
 
 def go_to(page):
     st.session_state.page = page
     st.rerun()
 
+# if "page" not in st.session_state:
+#     st.session_state.page = "readme"
 # ---------------------------------------
 # Sidebar — File Upload (Global Context)
 # ---------------------------------------
@@ -68,17 +69,22 @@ if st.sidebar.button("Reset App"):
 # ---------------------------------------
 # Router (Progressive & Locked)
 # ---------------------------------------
-if st.session_state.page == "upload":
+if st.session_state.page == "readme":
+    render(go_to)
+    
+elif st.session_state.page == "upload":
+    if "input_schema" not in st.session_state:
+        go_to("readme")
     upload_page(go_to)
 
-elif st.session_state.page == "summary":
+elif st.session_state.page == "output_summary":
     if "input_df" not in st.session_state:
         go_to("upload")
     summary_page(go_to)
 
 elif st.session_state.page == "output_download_page":
     if "output_df" not in st.session_state:
-        go_to("summary")
+        go_to("output_summary")
     details_page(go_to)
 
 

@@ -2,6 +2,7 @@ import streamlit as st
 
 def step_indicator(current_step: int):
     steps = [
+        "ReadMe",
         "Upload & Configure",
         "Summary",
         "Detailed Analysis",

@@ -1,16 +1,14 @@
 import pandas as pd
 import numpy as np
-from utils.functions import get_quarter_year, get_start_of_week, get_fx_type_and_unique_pairs
+from utils.functions import get_quarter_year, get_start_of_week, get_unique_pairs
 
 
-def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, sell_amount, sell_currency, exchange_rate):
+def run_fifo_engine(trade_df, date_column, traded_pairs, traded_amount, traded_rate, trade_direction):
     model_ouput = pd.DataFrame({})
 
-    trade_df = get_fx_type_and_unique_pairs(
+    trade_df = get_unique_pairs(
         df = trade_df,
-        exchangerte = exchange_rate,
-        currencypair = ccy_pair,
-        rate_inversion = False
+        currencypair = traded_pairs
     )
 
 
@@ -22,36 +20,23 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
         df_ = df_.sort_values(by=date_column, ascending=True)
 
         # Convert Columns to numpy to make it easier to interact with
-        # fx_type_numpy = df_["FX Type"].to_numpy()
-        buy_currency_numpy = df_[buy_currency].to_numpy()
-        buy_amount_numpy = df_[buy_amount].to_numpy()
-        prd_type_numpy = df_["product_type"].to_numpy()
-        exchange_rate_numpy = df_[exchange_rate].to_numpy() # if prd_type_numpy[row_index] == "Remittance" else (1/df_[exchange_rate]).to_numpy()
-        sell_currency_numpy = df_[sell_currency].to_numpy()
-        sell_amount_numpy = df_[sell_amount].to_numpy()
+        fx_type_numpy = df_[trade_direction].to_numpy()
+        trade_amount_numpy = df_[traded_amount].to_numpy()
+        exchange_rate_numpy = df_[traded_rate].to_numpy() 
 
 
         a = df_[df_["unique_pairs"] == unique_pair]
         # display(a.head())
-        a["exchange_rate_adj"] = (
-            np.where(
-                a['product_type'] == "Remittance"
-                ,a[exchange_rate]
-                ,1/a[exchange_rate]
-            )
-        )
+        b = a.groupby(traded_pairs)[traded_rate].mean().reset_index()
+        first_pair = b[traded_pairs].values[0]
 
-        b = a.groupby(ccy_pair)["exchange_rate_adj"].mean().reset_index()
-        first_pair = b[ccy_pair].values[0]
-        # inversion_check = False if a['product_type'] == "Remittance" else True
-
-        first_rate_used = b[b[ccy_pair] == first_pair]["exchange_rate_adj"].values[0]
+        first_rate_used = b[b[traded_pairs] == first_pair][traded_rate].values[0]
         # print(first_pair, first_rate_used)
         base_currency = (
             np.where(
                 first_rate_used > 1
-                ,first_pair.split("-")[0]
                 ,first_pair.split("-")[1]
+                ,first_pair.split("-")[0]
             )
         )
 
@@ -63,15 +48,15 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
                 , str(unique_pair).replace(str(base_currency), "").replace("/", "").strip()
             )
         )
-        # print(f"base_currency {base_currency}, revenue_currency {revenue_currency}")
-        df_["FX Type"] = (
-            np.where(
-                df_[ccy_pair].str[:3] == base_currency
-                ,"Buy", "Sell"
-            )
-        )
+        print(f"base_currency {base_currency}, revenue_currency {revenue_currency}")
+        # df_["FX Type"] = (
+        #     np.where(
+        #         df_[traded_pairs].str[:3] == base_currency
+        #         ,"Buy", "Sell"
+        #     )
+        # )
 
-        fx_type_numpy = df_["FX Type"].to_numpy()
+        # fx_type_numpy = df_["FX Type"].to_numpy()
 
 
         inventory_list_recent_state = []
@@ -96,13 +81,13 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
 
 
         computed_revenue_lc = np.empty(number_of_records, dtype= np.result_type(float)) # Initialize an dict to hold the records of the Computed Revenue in Local Currency
-        revenue_calc_formula = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an str to hold the implemented revenue formula
-        current_inventory_state = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an str to hold the final state positions of shorts and longs
-        current_inventory_state_details = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy)) # Initialize an str to hold the details of all the rates of shorts and longs
+        revenue_calc_formula = np.empty(number_of_records, dtype= np.result_type(str)) # Initialize an str to hold the implemented revenue formula
+        current_inventory_state = np.empty(number_of_records, dtype= np.result_type(str)) # Initialize an str to hold the final state positions of shorts and longs
+        current_inventory_state_details = np.empty(number_of_records, dtype= np.result_type(str)) # Initialize an str to hold the details of all the rates of shorts and longs
         last_state_identifier = np.empty(number_of_records, dtype=bool)
 
         WAR = np.empty(number_of_records, dtype= np.result_type(float))
-        unrealized_revenue_with_WAR_formula = np.empty(number_of_records, dtype= np.result_type(buy_currency_numpy))
+        unrealized_revenue_with_WAR_formula = np.empty(number_of_records, dtype= np.result_type(str))
 
 
         # print(f"    --Running for the {unique_pair} pair")
@@ -120,17 +105,17 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
                 rate_inverse_for_comparism = 1/exchange_rate_numpy[row_index]
 
             if fx_type_numpy[row_index] == "Buy":
-                inventory_amount[row_index] = inventory_amount[row_index - 1] + buy_amount_numpy[row_index] # Update Inventory with this amount (addition to inventory)
+                inventory_amount[row_index] = inventory_amount[row_index - 1] + trade_amount_numpy[row_index] # Update Inventory with this amount (addition to inventory)
 
                 trade_info = {
                     "row_id": row_index,
-                    "base_amount": buy_amount_numpy[row_index],
+                    "base_amount": trade_amount_numpy[row_index],
                     "rates": rate_inverse_for_comparism,
                     "trade_type" : "Buy"
                 }
-                traded_amount[row_index] = buy_amount_numpy[row_index]
+                traded_amount[row_index] = trade_amount_numpy[row_index]
                 inventory_of_longs____fx_buys += [trade_info]
-                longs______fx_buys += buy_amount_numpy[row_index]
+                longs______fx_buys += trade_amount_numpy[row_index]
 
                 
 
@@ -239,19 +224,19 @@ def run_fifo_engine(trade_df, date_column, ccy_pair, buy_amount, buy_currency, s
 
 
             elif fx_type_numpy[row_index] == "Sell":
-                inventory_amount[row_index] = inventory_amount[row_index - 1] - sell_amount_numpy[row_index] # Update Inventory with this amount (addition to inventory)
+                inventory_amount[row_index] = inventory_amount[row_index - 1] - trade_amount_numpy[row_index] # Update Inventory with this amount (addition to inventory)
 
                 
                 trade_info = {
                     "row_id": row_index,
-                    "base_amount": sell_amount_numpy[row_index],
+                    "base_amount": trade_amount_numpy[row_index],
                     "rates": rate_inverse_for_comparism, # exchange_rate_numpy[row_index] if exchange_rate_numpy[row_index] > 1  else (1/exchange_rate_numpy[row_index]),
                     "trade_type": "Sell"
                 }
 
                 inventory_of_shorts__fx_sales += [trade_info]
-                shorts____fx_sales += sell_amount_numpy[row_index]
-                traded_amount[row_index] = sell_amount_numpy[row_index]
+                shorts____fx_sales += trade_amount_numpy[row_index]
+                traded_amount[row_index] = trade_amount_numpy[row_index]
 
                 break_outer_sell_loop = False
                 while (round(longs______fx_buys, 8) > 0) & (len(inventory_of_shorts__fx_sales) > 0):# & (len(inventory_of_longs____fx_buys)) > 0:

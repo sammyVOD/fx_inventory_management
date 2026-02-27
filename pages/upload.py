@@ -51,7 +51,7 @@ def upload_page(go_to):
             c1, c2 = st.columns(2)
             with c1:
                 selected_trade_date = st.selectbox(
-                    "Identify the Date Column", ["Select a Column ..."] + input_df.columns.tolist(), key="trade_date_selectbox"
+                    "Identify the Date Column", ["Select a Column ..."] + input_df.columns.difference(selected_columns, sort=False).tolist(), key="trade_date_selectbox"
                 )
                 selected_columns.append(selected_trade_date)
             with c2:
@@ -128,7 +128,7 @@ def upload_page(go_to):
         selected_trade_rate = "trade_rate_temp_column"
         input_df[selected_trade_rate] = input_df[selected_amount_debited] / input_df[selected_amount_credited]
     
-        selected_trade_direction = "213_trade_type"
+        selected_trade_direction = "trade_direction_temp_column"
         input_df[selected_trade_direction] = (
             np.where(
                 input_df[selected_trade_rate] < 1
@@ -137,23 +137,32 @@ def upload_page(go_to):
             )
         )
 
-        ccy_pair_temp_column = "ccy_pair_temp_column"      
-        input_df[ccy_pair_temp_column] = input_df[selected_currency_debited].str.strip() + "-" +  input_df[selected_currency_credited].str.strip()
+        selected_trade_amount = "trade_amount_temp_column"
+        input_df[selected_trade_amount] = (
+            np.where(
+                input_df[selected_amount_debited] < input_df[selected_amount_credited]
+                , input_df[selected_amount_debited]
+                , input_df[selected_amount_credited]
+            )
+        )
+
+        traded_pairs_temp_column = "traded_pairs_temp_column"      
+        input_df[traded_pairs_temp_column] = input_df[selected_currency_debited].str.strip() + "-" +  input_df[selected_currency_credited].str.strip()
 
         # Convert required columns to appropriate data types
         input_df[selected_amount_debited] = pd.to_numeric(input_df[selected_amount_debited], errors='coerce')
         input_df[selected_amount_credited] = pd.to_numeric(input_df[selected_amount_credited], errors='coerce')
-    else: 
-        input_df[selected_trade_amount] = pd.to_numeric(input_df[selected_trade_amount], errors='coerce')
-        input_df[selected_trade_direction] = input_df[selected_trade_direction].str.strip()
+    else:
+        traded_pairs_temp_column = "traded_pairs_temp_column"
+        input_df[traded_pairs_temp_column] = "A-B"
 
     # ensure the date column is datetime indeed
     input_df[selected_trade_date] = pd.to_datetime(input_df[selected_trade_date], errors='coerce')
+    input_df[selected_trade_amount] = pd.to_numeric(input_df[selected_trade_amount], errors='coerce')
     input_df[selected_trade_rate] = pd.to_numeric(input_df[selected_trade_rate], errors='coerce')
-
+    input_df[selected_trade_direction] = input_df[selected_trade_direction].str.strip()
+    # input_df[traded_pairs_temp_column]
     
-
-
     with st.expander("⚙ Recognition Method & Time Period", expanded=True):
         c3, c4 = st.columns(2)
         with c3:
@@ -167,7 +176,7 @@ def upload_page(go_to):
                 st.stop()
 
         with c4:
-            selected_time_period = st.selectbox(
+            recognition_cycle = st.selectbox(
                 "Select Time Period for Recognition",
                 ["Select Cycle of Revenue Recognition...", "Yearly", "Quarterly", "Monthly", "Weekly", "Daily"]
             )
@@ -176,55 +185,64 @@ def upload_page(go_to):
     if recognition_method.startswith("Select Revenue"):
         st.warning("Please select the desired methodology to use for this revenue recognition process.")
         st.stop()
-    elif selected_time_period.startswith("Select Cycle"):
+    elif recognition_cycle.startswith("Select Cycle"):
         st.warning("Please select the time period for revenue recognition to proceed.")
         st.stop()
 
-    if st.button("▶ Run Evaluation"):
+
+    if "evaluation_done" not in st.session_state:
+        st.session_state.evaluation_done = False
+
+    start_eval = st.button("▶ Run Evaluation")
+    if start_eval:
 
         # -----------------------
         # Evaluation
         # -----------------------
+        st.write(f"⏳Running the {recognition_method} model")
         output_df = evaluate_fx_recognition_logic(
             trade_df_raw = input_df,
             date_column = selected_trade_date,
-            ccy_pair_column = ccy_pair_temp_column,
-            buy_amount_column = selected_amount_debited,
-            buy_currency_column = selected_currency_debited,
-            sell_amount_column = selected_amount_credited,
-            sell_currency_column = selected_currency_credited,
-            trade_rate_column = selected_trade_rate,
-            period = selected_time_period,
+            traded_pairs = traded_pairs_temp_column,
+            traded_amount = selected_trade_amount,
+            traded_rate = selected_trade_rate,
+            trade_direction = selected_trade_direction,
+            period = recognition_cycle,
             logic_type = recognition_method
         )
         st.session_state.output_df = output_df
 
         st.session_state.date_column = selected_trade_date
-        st.session_state.rate_column = selected_trade_rate
-        st.session_state.ccy_pair_column = ccy_pair_temp_column
-        st.session_state.from_amount = selected_amount_debited
-        st.session_state.to_amount = selected_amount_credited
-        st.session_state.from_currency = selected_currency_debited
-        st.session_state.to_currency = selected_currency_credited
+        st.session_state.traded_pairs = traded_pairs_temp_column
+        st.session_state.traded_amount = selected_trade_amount
+        st.session_state.traded_rate = selected_trade_rate
+        st.session_state.trade_direction = selected_trade_direction
         st.session_state.recognition_method = recognition_method
-        st.session_state.recognition_cycle = selected_time_period
+        st.session_state.recognition_cycle = recognition_cycle
 
         st.session_state.column_map = {
 
             "selected_trade_date": st.session_state.selected_trade_date,
-            "selected_trade_rate": st.session_state.selected_trade_rate,
-            "selected_ccy_pair": st.session_state.selected_ccy_pair,
-            "selected_amount_debited": st.session_state.selected_amount_debited,
-            "selected_amount_credited": st.session_state.selected_amount_credited,
-            "selected_currency_debited": st.session_state.selected_currency_debited,
-            "selected_currency_credited": st.session_state.selected_currency_credited,
+            "selected_trade_pairs": st.session_state.traded_pairs,
+            "selected_trade_amount": st.session_state.traded_amount,
+            "selected_trade_rate": st.session_state.traded_rate,
+            "selected_trade_direction": st.session_state.trade_direction,
             "recognition_method": st.session_state.recognition_method,
-            "selected_time_period": st.session_state.selected_time_period,
+            "recognition_cycle": st.session_state.recognition_cycle,
 
             "input_df": st.session_state.input_df,
             "output_df": st.session_state.output_df,
             "original_input_df": st.session_state.original_input_df
 
         }
-        go_to("output_summary")
 
+        st.session_state.evaluation_done = True
+
+        # Show proceed section AFTER evaluation
+        if st.session_state.evaluation_done:
+            st.success("Evaluation Complete! Proceed to a Summary Report")
+
+    if st.session_state.evaluation_done and st.button("PROCEED"):
+        st.session_state.page = "output_summary"
+        st.rerun()
+        go_to("output_summary")

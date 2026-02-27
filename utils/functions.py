@@ -30,9 +30,8 @@ def safe_literal_eval_numpy_inclusive(s):
         return s
 
 
-def get_fx_type_and_unique_pairs(df, exchangerte, currencypair, rate_inversion):
+def get_unique_pairs(df, currencypair):
     df_copy = df.copy()
-    df_copy.loc[:,"FX Type"] = np.where(df_copy.loc[:, exchangerte] >1, "Buy", "Sell")
     df_copy.loc[:,"unique_pairs"] = df_copy.loc[:, currencypair].apply(standardize_currency_pair)
     return df_copy
 

@@ -78,7 +78,7 @@ elif st.session_state.page == "upload":
     upload_page(go_to)
 
 elif st.session_state.page == "output_summary":
-    if "input_df" not in st.session_state:
+    if "output_df" not in st.session_state:
         go_to("upload")
     summary_page(go_to)
 
